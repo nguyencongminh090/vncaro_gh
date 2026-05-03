@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes">
+<title>VNCaro – Cờ Caro Trực Tuyến</title>
+<link rel="stylesheet" href="/css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+<!-- Google Sign-In SDK -->
+<script src="https://accounts.google.com/gsi/client" async></script>
+<!-- Google One Tap config (client_id injected by server) -->
+<div id="g_id_onload"
+  data-client_id="GOOGLE_CLIENT_ID_PLACEHOLDER"
+  data-callback="onGoogleLogin"
+  data-auto_prompt="false">
+</div>
+</head>
+<body>
+
+<div id="s-app">
+
+  <!-- HEADER -->
+  <header id="hdr">
+    <div class="hdr-l">
+      <button id="gc-btn" onclick="gcOpen()" title="Chat chung" style="position:relative;background:none;border:none;cursor:pointer;padding:5px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#555;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span id="gc-badge" style="display:none;position:absolute;top:0;right:0;background:#ef4444;color:#fff;border-radius:10px;padding:1px 5px;font-size:9px;font-weight:800;min-width:16px;text-align:center;font-family:Montserrat,sans-serif;"></span>
+      </button>
+    </div>
+    <button class="btn-donate" onclick="showDonate()">☕ Donate</button>
+    <div class="hdr-r">
+      <div id="auth-area">
+        <button class="btn-login" onclick="showLoginPopup()">Đăng nhập</button>
+      </div>
+    </div>
+  </header>
+  <!-- Donate ticker -->
+  <div id="donate-ticker" style="background:#f0fdf4;border-bottom:1px solid #d1fae5;overflow:hidden;white-space:nowrap;padding:5px 0;">
+    <span id="donate-ticker-text" style="display:inline-block;font-size:12px;font-weight:600;color:#065f46;font-family:'Montserrat',sans-serif;animation:tickerScroll 28s linear infinite;padding-left:100%;">
+      🎉 VNCaro xin cảm ơn các Donate đến từ: &nbsp;&nbsp;❤️ NGUYEN NGOC THANG &nbsp;&nbsp;❤️ LE DUY THANH &nbsp;&nbsp;❤️ NGUYEN VAN AN &nbsp;&nbsp;❤️ Hung Do The &nbsp;&nbsp;❤️ NGUYEN HUU TIEN &nbsp;&nbsp;❤️ NGUYEN TRUNG HIEU &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    </span>
+  </div>
+
+
+  <!-- CONTENT -->
+  <div id="cnt">
+
+    <!-- HOME -->
+    <div class="tp active" id="tp-home">
+      <div id="online-users-bar">
+        <div id="online-avatars-row">
+          <div id="online-avatars"></div>
+          <span id="online-count-lbl" class="online-count-lbl">0 online</span>
+        </div>
+      </div>
+      <!-- ANNOUNCEMENT BOX -->
+      <div id="announcement-wrap" style="display:none;">
+        <div id="announcement-box">
+          <div id="ann-content-wrap">
+            <span id="ann-icon">📢</span>
+            <span id="ann-text"></span>
+          </div>
+          <button id="ann-edit-btn" onclick="editAnnouncement()" style="display:none;" title="Chỉnh sửa thông báo">✏️</button>
+        </div>
+      </div>
+
+      <!-- Banner cộng đồng VNCaro -->
+      <div style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1.5px solid #6ee7b7;border-radius:14px;padding:13px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+            <circle cx="9" cy="7" r="3" fill="#059669"/>
+            <circle cx="15" cy="7" r="3" fill="#34d399"/>
+            <path d="M3 19c0-3.314 2.686-6 6-6h6c3.314 0 6 2.686 6 6" stroke="#059669" stroke-width="2" stroke-linecap="round" fill="none"/>
+          </svg>
+          <div>
+            <div style="font-size:14px;font-weight:800;color:#065f46;line-height:1.3;">Cộng đồng VNCaro</div>
+            <div style="font-size:12px;color:#047857;margin-top:2px;line-height:1.4;">Kết nối & Nâng tầm Caro</div>
+          </div>
+        </div>
+        <a href="https://zalo.me/g/d7sn2wsuhaclgvq3lhhh" target="_blank" rel="noopener" style="flex-shrink:0;background:#059669;color:#fff;border:none;border-radius:10px;padding:8px 16px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;cursor:pointer;text-decoration:none;display:inline-block;white-space:nowrap;">Tham gia</a>
+      </div>
+
+      <!-- Banner Tin tức -->
+      <div style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1.5px solid #93c5fd;border-radius:14px;padding:13px 16px;margin-bottom:16px;">
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;margin-top:1px;">
+            <rect x="3" y="4" width="18" height="16" rx="2" fill="#3b82f6" opacity="0.15"/>
+            <rect x="3" y="4" width="18" height="16" rx="2" stroke="#2563eb" stroke-width="1.5" fill="none"/>
+            <line x1="7" y1="9" x2="17" y2="9" stroke="#2563eb" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="7" y1="12" x2="17" y2="12" stroke="#2563eb" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="7" y1="15" x2="13" y2="15" stroke="#2563eb" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:10px;font-weight:800;color:#2563eb;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;">📢 Tin tức</div>
+            <div style="font-size:14px;font-weight:800;color:#1e3a8a;line-height:1.4;margin-bottom:3px;">Vòng loại Giải VNCaro Online Lần thứ 1</div>
+            <div style="font-size:12px;color:#1d4ed8;line-height:1.5;">Diễn ra từ nay đến <strong>23:00 ngày 23/05/2026</strong></div>
+          </div>
+        </div>
+        <div style="margin-top:10px;text-align:right;">
+          <button onclick="showOv('giai-modal')" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:7px 16px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;cursor:pointer;">Chi tiết</button>
+        </div>
+      </div>
+
+      <div class="sec">📜 Luật thi đấu</div>
+      <div class="cd">
+        <p class="rule"><span class="dg">●</span> X đi trước, chỉ được đặt quân cạnh các ô trung lập</p>
+        <p class="rule"><span class="dg">●</span> Open 4: nước X thứ 2 phải ngoài bán kính 3 ô</p>
+        <p class="rule"><span class="dg">●</span> Thắng: 5 quân liên tiếp hoặc đối thủ hết giờ</p>
+        <p class="rule"><span class="dg">●</span> Mỗi nước đi có 60 giây, còn 10s có âm thanh cảnh báo</p>
+      </div>
+      <div class="sec">🤝 Tinh thần thi đấu</div>
+      <div class="cd">
+        <p class="rule"><span class="dy">★</span> Văn minh, lịch sự, tôn trọng đối thủ</p>
+        <p class="rule"><span class="dy">★</span> Không spam, chửi thề hoặc lăng mạ</p>
+        <p class="rule"><span class="dy">★</span> Nghiêm cấm phần mềm hỗ trợ hoặc gian lận</p>
+      </div>
+    </div>
+
+    <!-- GIAO LUU -->
+    <div class="tp" id="tp-giaoluu">
+      <div class="room-btns">
+        <button class="btn-room btn-create" onclick="showCreatePopup()">✚ Tạo phòng</button>
+        <button class="btn-room btn-join" onclick="showJoinPopup()">🔑 Vào phòng</button>
+      </div>
+      <div class="sec" style="margin-top:14px;">⏳ Phòng đang chờ</div>
+      <div id="room-waiting-list"><p class="empty">Chưa có phòng nào đang chờ</p></div>
+      <div class="sec" style="margin-top:10px;">🤝 Đang giao lưu</div>
+      <div id="room-playing-list"><p class="empty">Chưa có trận giao lưu nào</p></div>
+    </div>
+
+    <!-- THI DAU -->
+    <div class="tp" id="tp-thidau">
+      <div class="td-row">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <button class="btn-find" id="find-btn" onclick="findMatch()">🔍 Tìm đối thủ</button>
+          <div id="queue-info" style="font-size:11px;color:#aaa;display:none;">🔎 <span id="queue-count">0</span> người đang tìm trận</div>
+        </div>
+        <div id="searching" style="display:none;text-align:center;">
+          <div class="spinner" style="margin:4px auto;width:24px;height:24px;border-width:2px;"></div>
+          <div class="srch-sub">Chờ: <span id="wt">0</span>s</div>
+          <button class="btn-ghost" onclick="cancelMatch()" style="margin-top:4px;padding:4px 10px;font-size:11px;">Hủy</button>
+        </div>
+      </div>
+      <div class="sec" style="margin-top:10px;">🥊 Trận đang thi đấu</div>
+      <div id="ranked-live-list"><p class="empty">Chưa có trận thi đấu nào</p></div>
+    </div>
+
+    <!-- XEP HANG -->
+    <div class="tp" id="tp-xephang">
+      <div class="cd my-rank" id="my-rank-banner" style="display:none;"></div>
+      <div class="sec">🏆 Bảng xếp hạng</div>
+      <div class="lb-wrap">
+        <table class="lb">
+          <thead><tr><th>#</th><th>Người chơi</th><th>ELO</th><th>W/L/D</th></tr></thead>
+          <tbody id="lb-body"><tr><td colspan="4" class="lb-load">Đang tải...</td></tr></tbody>
+              <tfoot><tr id="lb-more-row"></tr></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- GAME -->
+    <div class="tp" id="tp-game" style="padding:0;">
+      <div id="pbar">
+        <div class="pside" id="ps-x">
+          <div class="pav-wrap">
+            <div class="av av-g sz48" id="px-av">?</div>
+            <div class="pbadge"><span id="px-ico" class="PX">X</span></div>
+          </div>
+          <div class="pinfo">
+            <div class="pname" id="px-name">---</div>
+            <div class="pelo" id="px-elo">ELO ---</div>
+            <div class="tpill tpx" id="txb">⏱ <span id="tx">60</span>s</div>
+          </div>
+        </div>
+        <div class="pvs" id="score-wrap" style="display:flex;flex-direction:column;align-items:center;gap:2px;"><span class="pvs-txt">VS</span><span id="casual-score" style="display:none;font-size:13px;font-weight:900;color:#2d7a4f;letter-spacing:1px;">0 – 0</span></div>
+        <div class="pside pside-r" id="ps-o">
+          <div class="pinfo pinfo-r">
+            <div class="pname" id="po-name">---</div>
+            <div class="pelo" id="po-elo">ELO ---</div>
+            <div class="tpill tpo" id="tob">⏱ <span id="to">60</span>s</div>
+          </div>
+          <div class="pav-wrap">
+            <div class="av sz48" style="background:#eee;border:3px solid #ccc;color:#aaa;" id="po-av">?</div>
+            <div class="pbadge"><span id="po-ico" class="PO">O</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="bwrap">
+        <div id="binner"><div id="board"></div></div>
+        <button id="result-action-btn" onclick="onResultAction()" style="display:none;position:absolute;top:10px;right:10px;z-index:20;font-size:12px;padding:7px 14px;font-weight:700;font-family:Montserrat,sans-serif;background:#2d7a4f;color:#fff;border:none;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,.25);cursor:pointer;white-space:nowrap;"></button>
+        <div id="fzone"></div>
+      </div>
+
+      <div id="ctrl">
+        <button id="chat-toggle-btn" onclick="toggleChat()" class="ctrl-icon-btn" title="Chat trong trận">💬</button>
+        <div class="ctrl-sliders-wrap">
+          <div class="ctrl-slider-item">
+            <button class="ctrl-lbl-btn" onclick="toggleSl('slb-wrap')">Viền</button>
+            <div id="slb-wrap" style="display:none;align-items:center;gap:4px;">
+              <input type="range" min="0" max="100" value="30" id="slb" oninput="updB(this.value)" class="slider-v">
+            </div>
+          </div>
+          <div class="ctrl-slider-item">
+            <button class="ctrl-lbl-btn" onclick="toggleSl('sln-wrap')">Số</button>
+            <div id="sln-wrap" style="display:none;align-items:center;gap:4px;">
+              <input type="range" min="0" max="100" value="0" id="sln" oninput="updN(this.value)" class="slider-v">
+            </div>
+          </div>
+        </div>
+        <div id="ctrl-game-actions" style="display:flex;gap:8px;flex-shrink:0;">
+          <button onclick="offerDraw()" class="btn-draw" title="Draw">🤝 Draw</button>
+          <button onclick="doResign()" class="btn-resign" title="Resign">🏳 Resign</button>
+        </div>
+
+      </div>
+
+      <div id="chat-area">
+        <div id="chat-row">
+          <input type="text" id="ci" class="cinp" placeholder="Tin nhắn... (Enter gửi)" maxlength="100" oninput="updChatCount()" onkeydown="if(event.key==='Enter')sendMsg()"><span id="chat-count" style="font-size:10px;color:#ccc;flex-shrink:0;width:32px;text-align:right;align-self:center;">100</span>
+          <button class="btn-send" onclick="sendMsg()">↑</button>
+        </div>
+      </div>
+      <div id="spec-bar-txt" style="display:none;"></div>
+      <div id="gstat">Đang chờ...</div>
+      <div id="viewers-bar" style="display:none;background:#fafafa;padding:6px 12px;border-top:1px solid #eee;align-items:center;gap:6px;flex-shrink:0;min-height:44px;"></div>
+      <div id="result-modal" style="display:none;" onclick="closeResult(event)">
+        <div id="result-box">
+          <button class="result-close-btn" onclick="closeResult()">✕</button>
+          <div style="text-align:center;padding-bottom:8px;">
+            <div id="result-icon" style="font-size:2.4rem;margin-bottom:6px;">🏆</div>
+            <div id="result-title" style="font-size:16px;font-weight:800;color:#222;margin-bottom:4px;"></div>
+            <div id="result-sub" style="font-size:12px;color:#888;"></div>
+          </div>
+          <div id="elo-ch" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px;"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end cnt -->
+
+  <nav id="ftr">
+    <button class="nt active" id="nt-home" onclick="nav('home')"><span class="ni">🏠</span>Home</button>
+    <button class="nt" id="nt-giaoluu" onclick="nav('giaoluu')"><span class="ni">🤝</span>Giao lưu</button>
+    <button class="nt" id="nt-thidau" onclick="nav('thidau')"><span class="ni">🥊</span>Thi đấu</button>
+    <button class="nt" id="nt-xephang" onclick="nav('xephang')"><span class="ni">🏆</span>Xếp hạng</button>
+  </nav>
+
+</div>
+
+<!-- POPUP: LOGIN -->
+<div id="login-ov" class="ov" style="display:none;" onclick="closeOv(event,'login-ov')">
+  <div class="popup">
+    <button class="pclose" onclick="closeById('login-ov')">✕</button>
+    <div class="plogo">
+      <div class="lgrid">
+        <div class="lc"><span class="lx">X</span></div><div class="lc"><span class="lo">O</span></div>
+        <div class="lc"><span class="lo">O</span></div><div class="lc"><span class="lx">X</span></div>
+      </div>
+      <span class="ptitle">VNCaro</span>
+    </div>
+    <p class="psub">Đăng nhập để chơi và xếp hạng</p>
+    <button class="btn-google" id="google-btn" onclick="doGoogleLogin()">
+      <svg width="22" height="22" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-3.58-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Đăng nhập bằng Google
+    </button>
+    <div id="google-render-target" style="display:flex;justify-content:center;margin-top:10px;"></div>
+    <p class="psub" style="margin-top:12px;font-size:12px;color:#ccc;">Nếu nút trên không hoạt động, hãy dùng nút dưới</p>
+  </div>
+</div>
+
+<!-- POPUP: TẠO PHÒNG -->
+<div id="create-ov" class="ov" style="display:none;" onclick="closeOv(event,'create-ov')">
+  <div class="popup">
+    <button class="pclose" onclick="closeById('create-ov')">✕</button>
+    <h2 class="ptitle2">🏠 Tạo phòng giao lưu</h2>
+    <p class="psub">Tạo phòng riêng để mời bạn bè</p>
+    <div class="field-row">
+      <label class="flbl">Mật khẩu phòng (tùy chọn)</label>
+      <input class="inp" type="text" id="rpw" placeholder="Để trống = phòng mở">
+    </div>
+    <button class="btn-primary" onclick="createRoom()">✚ Tạo phòng</button>
+    <div id="wait-box" style="display:none;text-align:center;margin-top:22px;border-top:2px solid #f0f0f0;padding-top:18px;">
+      <div class="flbl">Mã phòng của bạn:</div>
+      <div id="rcode" class="big-code">------</div>
+      <p class="psub">Đang chờ đối thủ vào phòng...</p>
+      <div class="spinner" style="margin:12px auto;"></div>
+      <button class="btn-ghost" onclick="cancelRoom()">Hủy phòng</button>
+    </div>
+  </div>
+</div>
+
+<!-- POPUP: VÀO PHÒNG -->
+<div id="join-ov" class="ov" style="display:none;" onclick="closeOv(event,'join-ov')">
+  <div class="popup">
+    <button class="pclose" onclick="closeById('join-ov')">✕</button>
+    <h2 class="ptitle2">🔑 Vào phòng bằng mã</h2>
+    <div class="field-row">
+      <label class="flbl">Mã phòng</label>
+      <input class="inp code-inp" type="text" id="join-code" placeholder="ABCDEF" maxlength="6" onkeydown="if(event.key==='Enter')joinManual()">
+    </div>
+    <div class="field-row">
+      <label class="flbl">Mật khẩu (để trống nếu phòng mở)</label>
+      <input class="inp" type="password" id="join-pw" placeholder="Không bắt buộc">
+    </div>
+    <div class="form-err" id="join-err"></div>
+    <button class="btn-primary" onclick="joinManual()">▶ Vào phòng</button>
+  </div>
+</div>
+
+<!-- PROFILE -->
+<div id="pp" style="display:none;">
+  <div class="pp-head">
+    <div class="av av-g sz48" id="pp-av">?</div>
+    <div>
+      <div class="pp-name" id="pp-name">---</div>
+      <div class="pp-elo" id="pp-elo">ELO ---</div>
+    </div>
+  </div>
+  <div class="pp-stat" id="pp-stat">---</div>
+  <button class="btn-ghost" style="width:100%;margin-top:12px;" onclick="doLogout()">🚪 Đăng xuất</button>
+</div>
+
+
+<!-- DRAW OFFER MODAL -->
+<div id="draw-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:150;">
+  <div style="background:#fff;border-radius:18px;padding:2rem 1.8rem;max-width:340px;width:90%;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,.2);">
+    <div style="font-size:3rem;margin-bottom:10px;">🤝</div>
+    <h3 style="font-size:1.2rem;font-weight:800;margin-bottom:8px;color:#222;">Đối thủ đề nghị hòa!</h3>
+    <p style="font-size:14px;color:#888;margin-bottom:22px;">Bạn có muốn chấp nhận hòa cờ không?</p>
+    <div style="display:flex;gap:12px;justify-content:center;">
+      <button onclick="acceptDrawOffer()" style="flex:1;max-width:130px;background:#2d7a4f;color:#fff;border:none;border-radius:12px;padding:13px;font-family:Montserrat,sans-serif;font-weight:700;font-size:15px;cursor:pointer;">✅ Đồng ý</button>
+      <button onclick="declineDrawOffer()" style="flex:1;max-width:130px;background:#f5f5f5;color:#555;border:2px solid #ddd;border-radius:12px;padding:11px;font-family:Montserrat,sans-serif;font-weight:600;font-size:14px;cursor:pointer;">❌ Từ chối</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- POPUP: MẬT KHẨU PHÒNG -->
+<div id="pw-modal" class="ov" style="display:none;" onclick="closeOv(event,'pw-modal')">
+  <div class="popup">
+    <button class="pclose" onclick="closeById('pw-modal')">✕</button>
+    <h2 class="ptitle2">🔒 Nhập mật khẩu phòng</h2>
+    <input type="hidden" id="pw-room-code">
+    <div class="field-row">
+      <label class="flbl">Mật khẩu</label>
+      <input class="inp" type="password" id="pw-input" placeholder="Nhập mật khẩu" onkeydown="if(event.key==='Enter')submitPwModal()">
+    </div>
+    <div class="form-err" id="pw-err"></div>
+    <button class="btn-primary" onclick="submitPwModal()">▶ Vào phòng</button>
+  </div>
+</div>
+
+<!-- DRAW MODAL -->
+<div id="draw-modal" class="ov" style="display:none;">
+  <div class="popup" style="text-align:center;max-width:320px;">
+    <div style="font-size:3rem;margin-bottom:10px;">🤝</div>
+    <h3 style="font-size:1.1rem;font-weight:800;margin-bottom:8px;" id="draw-from">Đối thủ đề nghị hòa!</h3>
+    <p style="font-size:14px;color:#888;margin-bottom:20px;">Bạn có muốn chấp nhận không?</p>
+    <div style="display:flex;gap:12px;justify-content:center;">
+      <button onclick="acceptDrawOffer()" class="btn-primary" style="flex:1;max-width:130px;">✅ Đồng ý</button>
+      <button onclick="declineDrawOffer()" class="btn-ghost" style="flex:1;max-width:130px;">❌ Từ chối</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- DONATE MODAL -->
+<div id="donate-modal" class="ov" style="display:none;" onclick="closeOv(event,'donate-modal')">
+  <div class="popup" style="max-width:360px;text-align:center;">
+    <button class="pclose" onclick="closeById('donate-modal')">✕</button>
+    <div style="font-size:2.2rem;margin-bottom:8px;">☕</div>
+    <h2 style="font-size:1.2rem;font-weight:800;color:#2d7a4f;margin-bottom:12px;">VNCaro hoàn toàn miễn phí!</h2>
+    <p style="font-size:13px;color:#555;line-height:1.7;margin-bottom:18px;">
+      Nếu bạn thấy VNCaro thú vị và muốn ủng hộ mình duy trì server, phát triển thêm tính năng mới và tổ chức các sự kiện, giải đấu cộng đồng trong tương lai — một ly cà phê nhỏ cũng đủ tiếp thêm động lực! ☕🏆
+      <br><br>
+      Mọi đóng góp đều được ghi nhận và trân trọng. Cảm ơn bạn rất nhiều! 🙏
+    </p>
+    <div style="background:#f0fdf4;border:2px solid #dcfce7;border-radius:14px;padding:16px;margin-bottom:16px;">
+      <div style="font-size:13px;color:#888;margin-bottom:6px;font-weight:600;">Thông tin chuyển khoản</div>
+      <div style="font-size:15px;font-weight:800;color:#222;margin-bottom:4px;">MB Bank</div>
+      <div style="font-size:13px;color:#555;margin-bottom:10px;">Nguyễn Công Quyền</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;">
+        <span id="donate-stk" style="font-size:1.4rem;font-weight:900;color:#2d7a4f;letter-spacing:2px;">0933905525</span>
+        <button onclick="copySTK()" style="background:#2d7a4f;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Montserrat',sans-serif;" id="copy-stk-btn">📋 Copy</button>
+      </div>
+    </div>
+    <p style="font-size:11px;color:#aaa;">Nội dung CK: VNCaro ủng hộ</p>
+  </div>
+</div>
+
+
+<!-- ANNOUNCEMENT EDIT MODAL -->
+<div id="ann-modal" class="ov" style="display:none;" onclick="closeOv(event,'ann-modal')">
+  <div class="popup" style="max-width:420px;">
+    <button class="pclose" onclick="closeById('ann-modal')">✕</button>
+    <h3 class="ptitle2" style="margin-bottom:12px;">📢 Chỉnh sửa thông báo</h3>
+    <textarea id="ann-input" placeholder="Nhập nội dung thông báo..." style="width:100%;height:120px;border:1.5px solid #e5e7eb;border-radius:10px;padding:10px;font-family:'Montserrat',sans-serif;font-size:13px;resize:vertical;outline:none;"></textarea>
+    <div style="font-size:11px;color:#aaa;margin:6px 0 12px;">Để trống để ẩn thông báo</div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-primary" style="flex:1;" onclick="saveAnnouncement()">💾 Lưu</button>
+      <button class="btn-ghost" style="flex:1;" onclick="closeById('ann-modal')">Hủy</button>
+    </div>
+  </div>
+</div>
+
+<!-- Popup Giải VNCaro Online Lần 1 -->
+<div class="ov" id="giai-modal" style="display:none;align-items:flex-start;padding:16px 8px;overflow-y:auto;">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:520px;margin:auto;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.18);">
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);padding:18px 20px;text-align:center;position:relative;">
+      <button onclick="closeById('giai-modal')" style="position:absolute;top:12px;right:14px;background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:50%;width:28px;height:28px;font-size:14px;cursor:pointer;font-weight:700;display:flex;align-items:center;justify-content:center;">✕</button>
+      <div style="font-size:11px;font-weight:800;color:#93c5fd;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;">🏆 Thông tin giải đấu</div>
+      <div style="font-size:18px;font-weight:900;color:#fff;line-height:1.3;">Giải VNCaro Online<br>Lần Thứ 1</div>
+    </div>
+
+    <div style="padding:18px 20px;display:flex;flex-direction:column;gap:14px;font-family:'Montserrat',sans-serif;">
+
+      <!-- Thời gian -->
+      <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:12px 14px;">
+        <div style="font-size:11px;font-weight:800;color:#166534;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;">📅 Thời gian</div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <div style="font-size:13px;color:#333;display:flex;justify-content:space-between;">
+            <span style="font-weight:600;color:#555;">Vòng loại:</span>
+            <span style="font-weight:700;color:#166534;">Nay → 23:00 · 23/05/2026</span>
+          </div>
+          <div style="font-size:13px;color:#333;display:flex;justify-content:space-between;">
+            <span style="font-weight:600;color:#555;">Vòng chung kết:</span>
+            <span style="font-weight:700;color:#166534;">24/05 → 31/05/2026</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Điều kiện -->
+      <div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:12px;padding:12px 14px;">
+        <div style="font-size:11px;font-weight:800;color:#1e3a8a;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;">📋 Điều kiện tham gia Chung kết</div>
+        <div style="display:flex;flex-direction:column;gap:5px;font-size:13px;color:#1e3a8a;">
+          <div>⚡ Top <strong>8 ELO cao nhất</strong> vào Chung kết</div>
+          <div>⚡ Tối thiểu <strong>20 trận Thi đấu</strong> trong vòng loại</div>
+          <div>⚡ Chỉ tính trận <strong>Thi đấu (ranked)</strong>, không tính Giao lưu</div>
+        </div>
+      </div>
+
+      <!-- Thể thức -->
+      <div style="background:#fefce8;border:1.5px solid #fde68a;border-radius:12px;padding:12px 14px;">
+        <div style="font-size:11px;font-weight:800;color:#854d0e;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;">🎮 Thể thức Chung kết</div>
+        <div style="font-size:13px;color:#78350f;display:flex;flex-direction:column;gap:4px;">
+          <div>🥊 <strong>8 người</strong> · Loại trực tiếp · Tất cả <strong>BO3</strong></div>
+          <div style="font-size:11px;color:#92400e;margin-top:2px;padding:6px 8px;background:rgba(255,255,255,.6);border-radius:8px;">
+            Tứ kết: [1]vs[8] · [4]vs[5] · [2]vs[7] · [3]vs[6]<br>
+            Bán kết → Tranh Hạng Ba → Chung kết
+          </div>
+        </div>
+      </div>
+
+      <!-- Lưu ý -->
+      <div style="font-size:11px;color:#888;line-height:1.7;padding:0 2px;">
+        ⚠️ Mỗi nước đi có 60 giây &nbsp;·&nbsp; Kết quả ghi nhận tự động &nbsp;·&nbsp; Nghiêm cấm các hành vi gian lận liên quan đến phần mềm thứ 3, buff ELO, ...
+      <div style="margin-top:8px;padding:10px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font-size:11px;color:#991b1b;line-height:1.6;">
+        📌 <strong>Lưu ý:</strong> Các thông tin về thể thức, lịch thi đấu, cơ cấu giải thưởng có thể được điều chỉnh bởi <strong>VNCaro</strong>. Vui lòng theo dõi thông báo chính thức trên website.
+      </div>
+      </div>
+
+      <!-- Cơ cấu giải -->
+      <div style="background:#f8fafb;border:1.5px solid #e5e7eb;border-radius:12px;padding:12px 14px;">
+        <div style="font-size:11px;font-weight:800;color:#374151;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px;">🏆 Cơ cấu Giải thưởng · Tổng 1.100.000đ</div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;">
+          <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-top:2px;">Vòng chung kết</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span>🥇 Hạng Nhất ×1</span>
+            <span style="font-weight:800;color:#b45309;">400.000đ</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span>🥈 Hạng Nhì ×1</span>
+            <span style="font-weight:800;color:#6b7280;">200.000đ</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span>🥉 Hạng Ba ×2 <span style="font-size:10px;color:#9ca3af;">(thua Bán kết)</span></span>
+            <span style="font-weight:800;color:#92400e;">100.000đ/người</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span>🎖️ Khuyến khích ×4 <span style="font-size:10px;color:#9ca3af;">(thua Tứ kết)</span></span>
+            <span style="font-weight:800;color:#2d7a4f;">50.000đ/người</span>
+          </div>
+          <div style="height:1px;background:#e5e7eb;margin:4px 0;"></div>
+          <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Trao sau vòng loại</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span>🏅 Tích cực ×2 <span style="font-size:10px;color:#9ca3af;">(nhiều trận nhất)</span></span>
+            <span style="font-weight:800;color:#2d7a4f;">50.000đ/người</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="toast-wrap"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

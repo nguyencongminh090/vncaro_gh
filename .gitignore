@@ -1,0 +1,3 @@
+node_modules/\n.env\n*.db\n*.db-wal\n*.db-shm
+vncaro.db-shm
+vncaro.db-wal
