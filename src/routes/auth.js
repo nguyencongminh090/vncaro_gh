@@ -94,5 +94,27 @@ router.get('/me', requireAuth, (req, res) => {
     res.json({ user: { ...info, avatarUrl: info.avatar_url || '' } });
   } catch(e) { res.status(500).json({ error: 'Lỗi máy chủ' }); }
 });
+router.post('/dev', async (req, res) => {
+  if (process.env.DEV_MODE !== 'true') return res.status(403).json({ error: 'Dev mode disabled' });
+  try {
+    const { username } = req.body;
+    if (!username) return res.status(400).json({ error: 'Missing username' });
+    const db = getDB();
+    let user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+    if (!user) {
+      const id = createUser(username, 'DEV_MODE_ACCOUNT', '');
+      user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+    }
+    const token = signToken({ id: user.id, username: user.username });
+    res.json({
+      token,
+      user: {
+        id: user.id, username: user.username, elo: user.elo,
+        wins: user.wins, losses: user.losses, draws: user.draws,
+        avatarUrl: user.avatar_url || ''
+      }
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 
 module.exports = router;

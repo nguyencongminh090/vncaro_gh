@@ -1,3 +1,26 @@
-node_modules/\n.env\n*.db\n*.db-wal\n*.db-shm
-vncaro.db-shm
-vncaro.db-wal
+# Dependencies
+node_modules/
+dist/
+
+# Environment variables
+.env
+
+# Database
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+vncaro.db
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Artifacts
+*.diff
+production_artifacts/

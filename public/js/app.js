@@ -104,8 +104,39 @@ function doGoogleLogin() {
     if (n.isNotDisplayed && n.isNotDisplayed()) toast('Dùng nút Google bên dưới', 'i');
   });
 }
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initGoogleSdk);
-else setTimeout(initGoogleSdk, 200);
+
+async function loadConfig() {
+  try {
+    const cfg = await fetch('/api/config').then(r => r.json());
+    if (cfg.devMode) {
+      const devBtn = $('dev-login-btn');
+      if (devBtn) devBtn.style.display = 'block';
+    }
+  } catch(e) {}
+}
+
+async function doDevLogin() {
+  const username = prompt('Enter username for Dev Login:');
+  if (!username) return;
+  try {
+    const data = await API.loginDev(username);
+    afterAuth(data);
+  } catch(ex) {
+    toast('Dev Login error: ' + ex.message, 'e');
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    initGoogleSdk();
+    loadConfig();
+  });
+} else {
+  setTimeout(() => {
+    initGoogleSdk();
+    loadConfig();
+  }, 200);
+}
 
 // ─── Overlays ─────────────────────────────────────────────────────────────────
 function showOv(id) {
@@ -320,11 +351,6 @@ function connectSocket(token) {
   });
 
   socket.on('matched', function(d) {
-    // Fix #5: If spectating another room, tell the server to leave it before
-    // accepting the new match. Prevents the socket remaining in two rooms.
-    if (currentRoom && currentRoom !== d.roomCode) {
-      socket.emit('leave_room');
-    }
     currentRoom = d.roomCode;
     toast('Tìm thấy đối thủ! Bắt đầu...', 's');
     resetMatchUI();

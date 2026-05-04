@@ -28,7 +28,10 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 app.get('/api/config', (_req, res) => {
-  res.json({ googleClientId: process.env.GOOGLE_CLIENT_ID || '' });
+  res.json({
+    googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+    devMode: process.env.DEV_MODE === 'true'
+  });
 });
 app.use('/api/auth',        authRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);

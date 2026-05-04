@@ -16,6 +16,7 @@ const API = {
   register(u, p) { return this.post('/api/auth/register', { username: u, password: p }); },
   login(u, p) { return this.post('/api/auth/login', { username: u, password: p }); },
   loginGoogle(credential) { return this.post('/api/auth/google', { credential }); },
+  loginDev(username) { return this.post('/api/auth/dev', { username }); },
   me() { return this.get('/api/auth/me'); },
   leaderboard(limit) { return this.get('/api/leaderboard?limit=' + (limit||50)); },
   myRank() { return this.get('/api/leaderboard/me'); }
