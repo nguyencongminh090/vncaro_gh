@@ -367,6 +367,27 @@ function connectSocket(token) {
     } else resetMatchUI();
   });
 
+  socket.on('matchmaking_range', function(d) {
+    var sr = $('searching');
+    if (sr) {
+      var span = sr.querySelector('.mm-range');
+      if (!span) {
+         span = document.createElement('div');
+         span.className = 'mm-range';
+         span.style.fontSize = '12px';
+         span.style.color = '#888';
+         span.style.marginTop = '4px';
+         sr.appendChild(span);
+      }
+      span.textContent = 'Khoảng chênh lệch: ±' + d.range + ' ELO';
+    }
+  });
+
+  socket.on('matchmaking_timeout', function(d) {
+    resetMatchUI();
+    toast(d.message || 'Hết thời gian tìm trận', 'w');
+  });
+
   socket.on('game_start', function(data) {
     currentRoom = data.roomCode;
     gameType = data.gameType || 'ranked';
@@ -621,7 +642,11 @@ function resetMatchUI() {
   if (wtTimer) { clearInterval(wtTimer); wtTimer = null; } wtSec = 0;
   var fb = $('find-btn'), sr = $('searching');
   if (fb) fb.style.display = 'block';
-  if (sr) sr.style.display = 'none';
+  if (sr) {
+    sr.style.display = 'none';
+    var span = sr.querySelector('.mm-range');
+    if (span) span.textContent = '';
+  }
   set('wt', '0');
 }
 
