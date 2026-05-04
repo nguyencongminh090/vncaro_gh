@@ -1350,3 +1350,75 @@ function saveState() {
     }, 1200);
   } catch(e) { API.setToken(null); }
 })();
+
+
+window.getBitboardPosition = function() {
+    const size = 19;
+    let bbX = 0n;
+    let bbO = 0n;
+    let bbBlock = 0n;
+
+    if (typeof BD === 'undefined' || !BD || typeof FORB === 'undefined' || !FORB) {
+        console.error("Game memory not found. Make sure you are in a match.");
+        return "0,0,0";
+    }
+
+    FORB.forEach(f => {
+        const index = BigInt(f[0] * size + f[1]);
+        bbBlock |= (1n << index);
+    });
+
+    for (let r = 0; r < size; r++) {
+        if (!BD[r]) continue;
+        for (let c = 0; c < size; c++) {
+            const piece = BD[r][c];
+            if (piece) {
+                const index = BigInt(r * size + c);
+                if (piece === 'X') bbX |= (1n << index);
+                else if (piece === 'O') bbO |= (1n << index);
+            }
+        }
+    }
+    return `${bbX.toString(16)},${bbO.toString(16)},${bbBlock.toString(16)}`;
+};
+
+window.parseBitboardToBoard = function(bitboardStr) {
+    const parts = bitboardStr.split(',');
+    if (parts.length !== 3) {
+        console.error("Invalid bitboard string format.");
+        return null;
+    }
+    const bbX = BigInt("0x" + parts[0]);
+    const bbO = BigInt("0x" + parts[1]);
+    const bbBlock = BigInt("0x" + parts[2]);
+    const size = 19;
+    let board = [];
+    for (let r = 0; r < size; r++) {
+        let row = [];
+        for (let c = 0; c < size; c++) {
+            const index = BigInt(r * size + c);
+            const mask = 1n << index;
+            if ((bbX & mask) !== 0n) row.push('X');
+            else if ((bbO & mask) !== 0n) row.push('O');
+            else if ((bbBlock & mask) !== 0n) row.push('#');
+            else row.push('.');
+        }
+        board.push(row);
+    }
+    return board;
+};
+
+window.getBoardTextFromBitboard = function(bitboardStr) {
+    const board = window.parseBitboardToBoard(bitboardStr);
+    if (!board) return null;
+    return board.map(row => row.join(' ')).join('\n');
+};
+
+window.debugBoard = function() {
+    const bbPos = window.getBitboardPosition();
+    const boardStr = window.getBoardTextFromBitboard(bbPos);
+    if (boardStr) {
+        console.log("Current Board State:\n" + boardStr);
+        console.log("\nBitboard Payload: " + bbPos);
+    }
+};
