@@ -139,6 +139,10 @@ function setupHandlers(io, socket) {
       disconnectTimers.delete(key);
     }
   }
+  // Bug 3 fix: Cancel any pending grace timer for this user immediately on
+  // (re)connect. Without this, socket.io auto-reconnect (new socket ID, same
+  // user) would not cancel the 30s timer and would endGame a live match.
+  cancelDisconnectTimer();
 
   function startMoveTimer(roomCode) {
     const game = getGame(roomCode);
@@ -481,12 +485,17 @@ function setupHandlers(io, socket) {
 
   // ── Matchmaking ────────────────────────────────────────────────────────────
   socket.on('join_matchmaking', () => {
-    // Chặn nếu đang trong trận đang chơi (không chặn spectator)
     if (socket.currentRoom && !socket.isSpectator) {
       const activeGame = getGame(socket.currentRoom);
+      // Block if actively playing
       if (activeGame && activeGame.status === 'playing') {
         socket.emit('toast', { msg: 'Bạn đang trong trận đấu. Hãy kết thúc trước khi tìm trận mới!', type: 'w' });
         return;
+      }
+      // Bug 4 fix: finished_casual rooms must be cleaned up permanently so the
+      // other player is not left waiting for a rematch that can never come.
+      if (activeGame && activeGame.status === 'finished_casual') {
+        leaveCurrentRoom(true); // deletes game + leaves socket room
       }
     }
     leaveCurrentRoom(false);

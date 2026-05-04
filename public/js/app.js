@@ -1088,31 +1088,16 @@ function showResult(result) {
     row.appendChild(chip2);
   }
 
-  // Buttons
-  var paBtn = $('result-action-btn');
-  if (paBtn) {
-    if (result.gameType === 'casual' && !isSpectator) {
-      paBtn.style.display = 'inline-block';
-      paBtn.textContent = rematchVoted ? '⏳ Đang chờ...' : '🔄 Tái đấu';
-      paBtn._action = rematchVoted ? null : playAgain;
-    } else if (result.gameType === 'ranked' && !isSpectator) {
-      paBtn.style.display = 'inline-block';
-      paBtn.textContent = '🔍 Tìm trận';
-    } else {
-      paBtn.style.display = 'none';
-    }
-  }
-
-  // Nút chức năng: chỉ hiện cho NGƯỜI CHƠI, không hiện cho người xem
+  // Buttons — single authoritative block
   var rab = $('result-action-btn');
   if (rab) {
     rab.style.display = 'none';
     rab._action = null;
     if (!isSpectator) {
       if (result.gameType === 'casual') {
-        rab.textContent = '🔄 Tái đấu';
+        rab.textContent = rematchVoted ? '⏳ Đang chờ đối thủ...' : '🔄 Tái đấu';
         rab.style.display = 'inline-block';
-        rab._action = playAgain;
+        rab._action = rematchVoted ? null : playAgain;
       } else if (result.gameType === 'ranked') {
         rab.textContent = '🔍 Tìm trận mới';
         rab.style.display = 'inline-block';

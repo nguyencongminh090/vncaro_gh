@@ -41,7 +41,7 @@ router.post('/google', async (req, res) => {
       // Đảm bảo ELO mặc định là 1200
       db.prepare('UPDATE users SET elo=1200 WHERE id=? AND elo < 1200').run(id);
       // Lưu email
-      try { db.prepare('UPDATE users SET email=? WHERE id=?').run(email, id); } catch(e) {}
+      try { db.prepare('UPDATE users SET email=? WHERE id=?').run(payload.email, id); } catch(e) {}
       user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
     } else {
       // Existing user: update name and avatar from Google
