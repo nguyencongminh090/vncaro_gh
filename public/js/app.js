@@ -320,6 +320,11 @@ function connectSocket(token) {
   });
 
   socket.on('matched', function(d) {
+    // Fix #5: If spectating another room, tell the server to leave it before
+    // accepting the new match. Prevents the socket remaining in two rooms.
+    if (currentRoom && currentRoom !== d.roomCode) {
+      socket.emit('leave_room');
+    }
     currentRoom = d.roomCode;
     toast('Tìm thấy đối thủ! Bắt đầu...', 's');
     resetMatchUI();
@@ -346,6 +351,8 @@ function connectSocket(token) {
   });
 
   socket.on('move_made', function(d) {
+    // Fix #4: Ignore events not belonging to our current room (defense-in-depth).
+    if (d.roomCode && d.roomCode !== currentRoom) return;
     playMove(d.piece); // âm thanh nước đi
     if (d.piece === 'X' && mc === 0) xF = [d.row, d.col];
     if (d.piece === 'O' && mc === 1) oF = [d.row, d.col];
@@ -357,6 +364,8 @@ function connectSocket(token) {
   });
 
   socket.on('timer', function(d) {
+    // Fix #4: Ignore timer ticks from a room we are no longer in.
+    if (d.roomCode && d.roomCode !== currentRoom) return;
     var elId = turn === 'X' ? 'tx' : 'to';
     set(elId, d.timeLeft);
     if (d.timeLeft <= 10 && d.timeLeft > 0) beep();
@@ -403,6 +412,8 @@ function connectSocket(token) {
   });
 
   socket.on('chat_msg', function(d) {
+    // Fix #4: Only show chat from the room we are currently in.
+    if (d.roomCode && d.roomCode !== currentRoom) return;
     showFloatMsg(d.username, d.message, d.isSpectator);
   });
 }

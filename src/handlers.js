@@ -145,10 +145,10 @@ function setupHandlers(io, socket) {
     if (!game) return;
     if (game.timer) clearInterval(game.timer);
     game.timeLeft = MOVE_TIME;
-    io.to(roomCode).emit('timer', { timeLeft: game.timeLeft });
+    io.to(roomCode).emit('timer', { roomCode, timeLeft: game.timeLeft });
     game.timer = setInterval(() => {
       game.timeLeft--;
-      io.to(roomCode).emit('timer', { timeLeft: game.timeLeft });
+      io.to(roomCode).emit('timer', { roomCode, timeLeft: game.timeLeft });
       if (game.timeLeft <= 0) {
         clearInterval(game.timer); game.timer = null;
         endGame(roomCode, game.currentTurn === 'X' ? 'O' : 'X', 'timeout');
@@ -307,6 +307,9 @@ function setupHandlers(io, socket) {
       if (!game || (game.status !== 'playing' && game.status !== 'finished_casual')) {
         return socket.emit('room_error', { message: 'Trận đấu không tồn tại' });
       }
+      // Fix #2: Leave matchmaking queue when spectating — user must not be matched
+      // while subscribed to another room's event stream.
+      leaveQueue(userId);
       if (socket.currentRoom) leaveCurrentRoom(false);
       socket.join(roomCode);
       socket.currentRoom = roomCode;
@@ -521,7 +524,7 @@ function setupHandlers(io, socket) {
 
       const winCells = checkWinner(game.board, row, col, piece);
       io.to(roomCode).emit('move_made', {
-        row, col, piece,
+        roomCode, row, col, piece,
         nextTurn: game.currentTurn,
         moveCount: game.moveCount,
         winCells: winCells || null
@@ -590,6 +593,7 @@ function setupHandlers(io, socket) {
       if (!txt) return;
       const u = freshUser();
       io.to(roomCode).emit('chat_msg', {
+        roomCode,
         username,
         avatarUrl: u.avatar_url || '',
         message: txt,
@@ -647,6 +651,11 @@ function initMatchmaking(io) {
     const s1 = io.sockets.sockets.get(p1.socketId);
     const s2 = io.sockets.sockets.get(p2.socketId);
     if (!s1 || !s2) return;
+    // Fix #1: Leave any previous room (e.g. spectating) before joining the new match
+    // room. Without this, the socket remains subscribed to the old room and events
+    // (move_made, chat_msg, timer, game_over) from that room bleed into the new match.
+    if (s1.currentRoom) s1.leave(s1.currentRoom);
+    if (s2.currentRoom) s2.leave(s2.currentRoom);
     s1.join(code); s1.currentRoom = code; s1.isSpectator = false;
     s2.join(code); s2.currentRoom = code; s2.isSpectator = false;
     const coinFlip = Math.random() < 0.5;
@@ -668,10 +677,10 @@ function initMatchmaking(io) {
     broadcastLiveGames(io);
     io.emit('queue_size', { count: getQueueSize() }); // broadcast sau khi match
     game.timeLeft = MOVE_TIME;
-    io.to(code).emit('timer', { timeLeft: MOVE_TIME });
+    io.to(code).emit('timer', { roomCode: code, timeLeft: MOVE_TIME });
     game.timer = setInterval(() => {
       game.timeLeft--;
-      io.to(code).emit('timer', { timeLeft: game.timeLeft });
+      io.to(code).emit('timer', { roomCode: code, timeLeft: game.timeLeft });
       if (game.timeLeft <= 0) {
         clearInterval(game.timer); game.timer = null;
         const g = require('./game').getGame(code);
