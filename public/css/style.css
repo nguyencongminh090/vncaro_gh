@@ -372,6 +372,12 @@ body{font-family:'Montserrat',sans-serif;background:#e8eaed;color:#1a1a1a;displa
 .ctrl-slider-item{display:flex;align-items:center;gap:4px;}
 .ctrl-lbl-btn{background:#f0f2f5;border:1px solid #e5e7eb;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:700;color:#555;cursor:pointer;white-space:nowrap;font-family:'Montserrat',sans-serif;}
 .ctrl-lbl-btn:hover{background:#e5e7eb;}
+.ctrl-lbl-btn.active{background:#dcfce7;border-color:#22c55e;color:#166534;}
+
+/* ── Board coordinates ──────────────────────────────────────────────────── */
+.coord-row{display:flex;align-items:center;}
+.coord-col{display:flex;flex-direction:column;}
+.coord-lbl{display:flex;align-items:center;justify-content:center;font-weight:700;color:#aaa;font-family:'Montserrat',sans-serif;flex-shrink:0;user-select:none;line-height:1;}
 
 /* ── Vertical slider ──────────────────────────────────────────────────────── */
 .slider-v{

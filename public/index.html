@@ -187,7 +187,15 @@
       </div>
 
       <div id="bwrap">
-        <div id="binner"><div id="board"></div></div>
+        <div id="binner">
+          <div id="coord-top"  class="coord-row" style="display:none;"></div>
+          <div id="coord-mid"  style="display:flex;">
+            <div id="coord-left"  class="coord-col" style="display:none;"></div>
+            <div id="board"></div>
+            <div id="coord-right" class="coord-col" style="display:none;"></div>
+          </div>
+          <div id="coord-bot"  class="coord-row" style="display:none;"></div>
+        </div>
         <button id="result-action-btn" onclick="onResultAction()" style="display:none;position:absolute;top:10px;right:10px;z-index:20;font-size:12px;padding:7px 14px;font-weight:700;font-family:Montserrat,sans-serif;background:#2d7a4f;color:#fff;border:none;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,.25);cursor:pointer;white-space:nowrap;"></button>
         <div id="fzone"></div>
       </div>
@@ -206,6 +214,9 @@
             <div id="sln-wrap" style="display:none;align-items:center;gap:4px;">
               <input type="range" min="0" max="100" value="0" id="sln" oninput="updN(this.value)" class="slider-v">
             </div>
+          </div>
+          <div class="ctrl-slider-item">
+            <button class="ctrl-lbl-btn" id="coord-btn" onclick="toggleCoords()">Tọa độ</button>
           </div>
         </div>
         <div id="ctrl-game-actions" style="display:flex;gap:8px;flex-shrink:0;">

@@ -192,12 +192,16 @@ function saveGameMoves(gameId, moves) {
     VALUES (?,?,?,?,?,?,?)
   `);
   // Wrap in a transaction for speed (single fsync for all moves)
-  const insertAll = db.transaction((rows) => {
-    for (const m of rows) {
+  db.exec('BEGIN TRANSACTION');
+  try {
+    for (const m of moves) {
       stmt.run(gameId, m.moveNumber, m.playerId, m.piece, m.row, m.col, m.thinkTimeMs);
     }
-  });
-  insertAll(moves);
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
 }
 
 // Chess.com K-factor (chính xác)

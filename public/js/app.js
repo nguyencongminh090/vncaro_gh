@@ -7,6 +7,7 @@ var xF = null, oF = null, sel = null;
 var over = false, wc = [], myP = null, gameType = 'ranked';
 var leftPieceCur = 'X', rightPieceCur = 'O'; // quân cờ hiển thị ở vị trí trái/phải
 var bOp = 0.12, nOp = 0.0; // số ẩn mặc định
+var showCoords = false; // tọa độ ẩn mặc định
 var lastMove = null; // [row, col, piece]
 // zoom removed
 var liveGames = [], waitRooms = {};
@@ -54,6 +55,7 @@ function applyBoardSize() {
   var pieceSz = Math.floor(cs * 0.68) + 'px';
   document.querySelectorAll('.cnum').forEach(function(n) { n.style.fontSize = numSz; });
   document.querySelectorAll('.PX,.PO').forEach(function(p) { p.style.fontSize = pieceSz; });
+  renderCoords();
 }
 window.addEventListener('resize', applyBoardSize);
 
@@ -927,6 +929,54 @@ document.addEventListener('click', function(e) {
     });
   }
 });
+
+function toggleCoords() {
+  showCoords = !showCoords;
+  var btn = $('coord-btn');
+  if (btn) btn.classList.toggle('active', showCoords);
+  renderCoords();
+}
+
+function renderCoords() {
+  var top = $('coord-top'), bot = $('coord-bot');
+  var lft = $('coord-left'), rgt = $('coord-right');
+  if (!top) return;
+
+  if (!showCoords) {
+    [top, bot, lft, rgt].forEach(function(el) { if (el) el.style.display = 'none'; });
+    return;
+  }
+
+  var cs   = calcCellSize();
+  var lblH = Math.max(12, Math.floor(cs * 0.55)); // height of col-label bar
+  var lblW = Math.max(12, Math.floor(cs * 0.55)); // width  of row-label bar
+  var fs   = Math.max(7,  Math.floor(cs * 0.30)); // font-size
+  var N    = 19;
+  var cols = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S'];
+
+  // ── Column labels (top & bottom) ─────────────────────────────────────────
+  function colLblHtml() {
+    // First cell: blank corner matching the row-label width
+    var html = '<div class="coord-lbl" style="width:' + lblW + 'px;height:' + lblH + 'px;"></div>';
+    for (var i = 0; i < N; i++) {
+      html += '<div class="coord-lbl" style="width:' + cs + 'px;height:' + lblH + 'px;font-size:' + fs + 'px;">' + cols[i] + '</div>';
+    }
+    return html;
+  }
+  top.innerHTML = colLblHtml(); top.style.display = 'flex';
+  bot.innerHTML = colLblHtml(); bot.style.display = 'flex';
+
+  // ── Row labels (left & right) ─────────────────────────────────────────────
+  function rowLblHtml() {
+    var html = '';
+    for (var i = 0; i < N; i++) {
+      html += '<div class="coord-lbl" style="height:' + cs + 'px;width:' + lblW + 'px;font-size:' + fs + 'px;">' + (N - i) + '</div>';
+    }
+    return html;
+  }
+  lft.innerHTML = rowLblHtml(); lft.style.display = 'flex';
+  rgt.innerHTML = rowLblHtml(); rgt.style.display = 'flex';
+}
 
 function updChatCount() {
   var inp = $('ci'), cnt = $('chat-count');
