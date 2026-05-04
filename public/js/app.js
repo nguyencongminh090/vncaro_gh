@@ -780,7 +780,18 @@ function renderBoard() {
         }
         var sp = document.createElement('span');
         sp.className = BD[r][c] === 'X' ? 'PX' : 'PO';
-        sp.textContent = BD[r][c];
+        sp.style.display = 'flex';
+        sp.style.alignItems = 'center';
+        sp.style.justifyContent = 'center';
+        sp.style.width = '100%';
+        sp.style.height = '100%';
+        
+        if (BD[r][c] === 'X') {
+          sp.innerHTML = '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><line x1="20" y1="4" x2="4" y2="20"></line><line x1="4" y1="4" x2="20" y2="20"></line></svg>';
+        } else {
+          sp.innerHTML = '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>';
+        }
+        
         if (isW) sp.style.animation = 'bounce .5s ease-in-out infinite';
         d.appendChild(sp);
       } else {
