@@ -42,15 +42,37 @@ function initDB() {
       p1_elo_before INTEGER, p2_elo_before INTEGER,
       p1_elo_after INTEGER, p2_elo_after INTEGER,
       total_moves INTEGER DEFAULT 0,
+      end_reason TEXT DEFAULT NULL,
+      forbidden_cells TEXT DEFAULT NULL,
+      rules_json TEXT DEFAULT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
-    CREATE INDEX IF NOT EXISTS idx_users_elo ON users(elo DESC);
+    CREATE TABLE IF NOT EXISTS game_moves (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      game_id      INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+      move_number  INTEGER NOT NULL,
+      player_id    INTEGER NOT NULL,
+      piece        TEXT    NOT NULL,
+      row          INTEGER NOT NULL,
+      col          INTEGER NOT NULL,
+      think_time_ms INTEGER NOT NULL DEFAULT 0,
+      created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_users_elo        ON users(elo DESC);
+    CREATE INDEX IF NOT EXISTS idx_users_elo_id     ON users(elo DESC, id ASC);
+    CREATE INDEX IF NOT EXISTS idx_game_moves_game  ON game_moves(game_id);
+    CREATE INDEX IF NOT EXISTS idx_game_moves_player ON game_moves(player_id);
+    CREATE INDEX IF NOT EXISTS idx_games_room       ON games(room_code);
   `);
   // Migrations for existing DBs
   const migrations = [
     "ALTER TABLE users ADD COLUMN total_ranked_games INTEGER DEFAULT 0",
     "ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT ''",
     "ALTER TABLE games ADD COLUMN game_type TEXT DEFAULT 'ranked'",
+    // Rich history columns (2025-05)
+    "ALTER TABLE games ADD COLUMN end_reason TEXT DEFAULT NULL",
+    "ALTER TABLE games ADD COLUMN forbidden_cells TEXT DEFAULT NULL",
+    "ALTER TABLE games ADD COLUMN rules_json TEXT DEFAULT NULL",
   ];
   migrations.forEach(sql => { try { d.exec(sql); } catch(e) {} });
   // Thêm cột email nếu chưa có (migration)
@@ -140,13 +162,42 @@ function getUserRank(userId) {
 }
 
 function saveGame({ roomCode, gameType, player1Id, player2Id, winnerId, draw,
-  p1EloBefore, p2EloBefore, p1EloAfter, p2EloAfter, totalMoves }) {
-  getDB().prepare(`
+  p1EloBefore, p2EloBefore, p1EloAfter, p2EloAfter, totalMoves,
+  endReason, forbiddenCells, rulesJson }) {
+  const result = getDB().prepare(`
     INSERT INTO games (room_code,game_type,player1_id,player2_id,winner_id,draw,
-    p1_elo_before,p2_elo_before,p1_elo_after,p2_elo_after,total_moves)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?)
-  `).run(roomCode, gameType||'ranked', player1Id, player2Id, winnerId??null, draw?1:0,
-    p1EloBefore, p2EloBefore, p1EloAfter, p2EloAfter, totalMoves);
+    p1_elo_before,p2_elo_before,p1_elo_after,p2_elo_after,total_moves,
+    end_reason,forbidden_cells,rules_json)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+  `).run(
+    roomCode, gameType||'ranked', player1Id, player2Id, winnerId??null, draw?1:0,
+    p1EloBefore, p2EloBefore, p1EloAfter, p2EloAfter, totalMoves,
+    endReason||null,
+    forbiddenCells ? JSON.stringify(forbiddenCells) : null,
+    rulesJson      ? JSON.stringify(rulesJson)       : null
+  );
+  return result.lastInsertRowid; // returned so caller can link game_moves
+}
+
+/**
+ * Bulk-insert all moves for a finished game.
+ * @param {number} gameId - from saveGame() return value
+ * @param {Array}  moves  - [{moveNumber,playerId,piece,row,col,thinkTimeMs}]
+ */
+function saveGameMoves(gameId, moves) {
+  if (!moves || !moves.length) return;
+  const db = getDB();
+  const stmt = db.prepare(`
+    INSERT INTO game_moves (game_id,move_number,player_id,piece,row,col,think_time_ms)
+    VALUES (?,?,?,?,?,?,?)
+  `);
+  // Wrap in a transaction for speed (single fsync for all moves)
+  const insertAll = db.transaction((rows) => {
+    for (const m of rows) {
+      stmt.run(gameId, m.moveNumber, m.playerId, m.piece, m.row, m.col, m.thinkTimeMs);
+    }
+  });
+  insertAll(moves);
 }
 
 // Chess.com K-factor (chính xác)
@@ -189,7 +240,7 @@ function setAnnouncement(content) {
 module.exports = {
   initDB, getDB, createUser, findUserByUsername, findUserById,
   updateUserStats, updateAvatarUrl,
-  getLeaderboard, getUserRank, saveGame,
+  getLeaderboard, getUserRank, saveGame, saveGameMoves,
   calcELO, calcELODraw, getKFactor,
   getAnnouncement, setAnnouncement
 };

@@ -31,6 +31,9 @@ function createGame(roomCode, playerX, playerO) {
     currentTurn: 'X', status: 'playing',
     moveCount: 0, xFirst: null,
     timer: null, timeLeft: MOVE_TIME,
+    // Rich history tracking
+    turnStartTime: Date.now(), // reset on each move for think_time_ms
+    pendingMoves: [],          // buffered until game ends, then bulk-inserted
   };
   games.set(roomCode, state);
   return state;

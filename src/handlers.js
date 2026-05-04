@@ -6,7 +6,7 @@ const {
   generateRoomCode, MOVE_TIME, BOARD_SIZE
 } = require('./game');
 const {
-  findUserById, updateUserStats, saveGame,
+  findUserById, updateUserStats, saveGame, saveGameMoves,
   calcELO, calcELODraw,
   getUserRank, getAnnouncement, setAnnouncement
 } = require('./db');
@@ -204,15 +204,21 @@ function setupHandlers(io, socket) {
       }
     }
 
-    saveGame({
+    const rulesJson = { winLength: 5, moveTime: MOVE_TIME, boardSize: BOARD_SIZE };
+    const gameId = saveGame({
       roomCode, gameType: game.gameType || 'ranked',
       player1Id: p.X.userId, player2Id: p.O.userId,
       winnerId: isDraw ? null : (winnerPiece === 'X' ? p.X.userId : p.O.userId),
       draw: isDraw,
       p1EloBefore: elo1B, p2EloBefore: elo2B,
       p1EloAfter: elo1B + xDelta, p2EloAfter: elo2B + oDelta,
-      totalMoves: game.moveCount
+      totalMoves: game.moveCount,
+      endReason: reason,
+      forbiddenCells: game.forbidden,
+      rulesJson
     });
+    // Bulk-insert all buffered moves for this game
+    try { saveGameMoves(gameId, game.pendingMoves || []); } catch(e) { console.error('saveGameMoves:', e); }
 
     const eloChanges = isRanked ? {
       [p.X.userId]: { delta: xDelta, newElo: elo1B + xDelta },
@@ -528,6 +534,18 @@ function setupHandlers(io, socket) {
 
       game.board[row][col] = piece;
       if (piece === 'X' && game.moveCount === 0) game.xFirst = [row, col];
+
+      // Compute think time and buffer move for history
+      const thinkTimeMs = game.turnStartTime ? Math.max(0, Date.now() - game.turnStartTime) : 0;
+      game.turnStartTime = Date.now(); // reset for next player
+      if (!game.pendingMoves) game.pendingMoves = [];
+      game.pendingMoves.push({
+        moveNumber: game.moveCount + 1,
+        playerId: userId,
+        piece, row, col,
+        thinkTimeMs
+      });
+
       game.moveCount++;
       game.currentTurn = piece === 'X' ? 'O' : 'X';
 
