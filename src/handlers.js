@@ -10,7 +10,7 @@ const {
   calcELO, calcELODraw,
   getUserRank, getAnnouncement, setAnnouncement
 } = require('./db');
-const { joinQueue, leaveQueue, startTicker, getQueueSize } = require('./matchmaking');
+const { joinQueue, leaveQueue, startTicker, getQueueSize, getQueue } = require('./matchmaking');
 
 const DISCONNECT_GRACE = 30000; // 30s để mobile reconnect
 const disconnectTimers = new Map();
@@ -115,6 +115,14 @@ function broadcastOnlineUsers(io) {
     });
   });
   io.emit('online_users', unique);
+}
+
+function broadcastQueue(io) {
+  if (!io) return;
+  io.emit('queue_update', {
+    count: getQueueSize(),
+    users: getQueue()
+  });
 }
 
 let io_ref = null;
@@ -508,13 +516,13 @@ function setupHandlers(io, socket) {
     const u = freshUser();
     const joined = joinQueue({ socketId: socket.id, userId, username, elo: u.elo, avatarUrl: u.avatar_url || '' });
     if (joined) socket.emit('matchmaking_status', { status: 'searching' });
-    io.emit('queue_size', { count: getQueueSize() }); // broadcast ngay khi join
+    broadcastQueue(io); // broadcast ngay khi join
   });
 
   socket.on('cancel_matchmaking', () => {
     leaveQueue(userId);
     socket.emit('matchmaking_status', { status: 'cancelled' });
-    io.emit('queue_size', { count: getQueueSize() });
+    broadcastQueue(io);
   });
 
   // ── Make move ──────────────────────────────────────────────────────────────
@@ -634,6 +642,7 @@ function setupHandlers(io, socket) {
 
   socket.on('disconnect', () => {
     leaveQueue(userId);
+    broadcastQueue(io);
     const room = socket.currentRoom;
     if (!room) return;
     if (socket.isSpectator) {
@@ -702,7 +711,7 @@ function initMatchmaking(io) {
     io.to(code).emit('matched', { roomCode: code });
     io.to(code).emit('game_start', startData);
     broadcastLiveGames(io);
-    io.emit('queue_size', { count: getQueueSize() }); // broadcast sau khi match
+    broadcastQueue(io); // broadcast sau khi match
     game.timeLeft = MOVE_TIME;
     io.to(code).emit('timer', { roomCode: code, timeLeft: MOVE_TIME });
     game.timer = setInterval(() => {

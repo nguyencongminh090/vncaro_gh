@@ -332,11 +332,24 @@ function connectSocket(token) {
   });
   socket.on('live_games', function(games) { liveGames = games || []; renderLiveGames(); });
 
-  socket.on('queue_size', function(d) {
-    var qi = $('queue-info'), qc = $('queue-count');
+  socket.on('queue_update', function(d) {
+    var qi = $('queue-info'), qc = $('queue-count'), qa = $('queue-avatars');
     if (!qi || !qc) return;
     qc.textContent = d.count || 0;
     qi.style.display = (d.count > 0) ? 'block' : 'none';
+    if (qa) {
+      qa.innerHTML = '';
+      (d.users || []).forEach(function(u) {
+        var html = avatarHtml(u.username, u.avatarUrl, 'sz28');
+        var temp = document.createElement('div');
+        temp.innerHTML = html;
+        var el = temp.firstChild;
+        if (el) {
+          el.title = u.username + ' (' + u.elo + ')';
+          qa.appendChild(el);
+        }
+      });
+    }
   });
 
   socket.on('room_created', function(d) {

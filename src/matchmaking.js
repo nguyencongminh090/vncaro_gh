@@ -115,4 +115,12 @@ function startTicker(io, onMatch) {
 }
 
 function getQueueSize() { return queue.length; }
-module.exports = { joinQueue, leaveQueue, startTicker, getQueueSize };
+function getQueue() {
+  return queue.map(p => ({
+    userId: p.userId,
+    username: p.username,
+    elo: p.elo,
+    avatarUrl: p.avatarUrl || ''
+  }));
+}
+module.exports = { joinQueue, leaveQueue, startTicker, getQueueSize, getQueue };
