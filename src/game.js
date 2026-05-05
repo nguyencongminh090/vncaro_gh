@@ -65,6 +65,40 @@ function checkWinner(board, row, col, piece) {
 
 const checkDraw = board => board.every(row => row.every(c => c !== null));
 
+function resetGameForRematch(roomCode, winnerPiece) {
+  const g = games.get(roomCode);
+  if (!g) return null;
+
+  // Swap players: if there was a winner, loser goes first (becomes X)
+  // If it was a draw (winnerPiece is null/draw), just swap X and O.
+  const oldX = g.players.X;
+  const oldO = g.players.O;
+  let newX = oldO;
+  let newO = oldX;
+
+  if (winnerPiece === 'X') {
+    newX = oldO;
+    newO = oldX;
+  } else if (winnerPiece === 'O') {
+    newX = oldX;
+    newO = oldO;
+  }
+
+  if (g.timer) clearInterval(g.timer);
+
+  g.board = createEmptyBoard();
+  g.forbidden = genForbidden();
+  g.players = { X: newX, O: newO };
+  g.currentTurn = 'X';
+  g.status = 'playing';
+  g.moveCount = 0;
+  g.timeLeft = MOVE_TIME;
+  g.turnStartTime = Date.now();
+  g.pendingMoves = [];
+  
+  return g;
+}
+
 function generateRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code;
@@ -75,7 +109,7 @@ function generateRoomCode() {
 
 module.exports = {
   games, waitingRooms,
-  createGame, getGame, deleteGame,
+  createGame, getGame, deleteGame, resetGameForRematch,
   isForbidden, checkWinner, checkDraw,
   generateRoomCode, MOVE_TIME, BOARD_SIZE
 };

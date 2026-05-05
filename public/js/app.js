@@ -380,25 +380,51 @@ function connectSocket(token) {
     } else resetMatchUI();
   });
 
-  socket.on('matchmaking_range', function(d) {
+  socket.on('queue_status', function(d) {
     var sr = $('searching');
-    if (sr) {
-      var span = sr.querySelector('.mm-range');
-      if (!span) {
-         span = document.createElement('div');
-         span.className = 'mm-range';
-         span.style.fontSize = '12px';
-         span.style.color = '#888';
-         span.style.marginTop = '4px';
-         sr.appendChild(span);
-      }
-      span.textContent = 'Khoảng chênh lệch: ±' + d.range + ' ELO';
+    if (!sr || sr.style.display === 'none') return;
+
+    // Update wait counter
+    set('wt', d.waitSec);
+
+    // Staged status message
+    var msgs = [
+      [0,   'Đang tìm đối thủ...'],
+      [30,  'Đang mở rộng phạm vi tìm kiếm...'],
+      [60,  'Hàng đợi đang ít người, tiếp tục chờ...'],
+      [120, 'Vẫn chưa tìm được đối thủ, hệ thống đang cố gắng...']
+    ];
+    var msg = msgs[0][1];
+    for (var k = msgs.length - 1; k >= 0; k--) {
+      if (d.waitSec >= msgs[k][0]) { msg = msgs[k][1]; break; }
     }
+    var statusEl = sr.querySelector('.mm-status');
+    if (!statusEl) {
+      statusEl = document.createElement('div');
+      statusEl.className = 'mm-status';
+      statusEl.style.fontSize = '12px';
+      statusEl.style.color = '#aaa';
+      statusEl.style.marginTop = '4px';
+      sr.insertBefore(statusEl, sr.firstChild);
+    }
+    statusEl.textContent = msg;
+
+    // ELO range indicator
+    var rangeEl = sr.querySelector('.mm-range');
+    if (!rangeEl) {
+      rangeEl = document.createElement('div');
+      rangeEl.className = 'mm-range';
+      rangeEl.style.fontSize = '11px';
+      rangeEl.style.color = '#888';
+      rangeEl.style.marginTop = '2px';
+      sr.appendChild(rangeEl);
+    }
+    rangeEl.textContent = 'Khoảng chênh lệch: ±' + d.currentRange + ' ELO';
   });
 
-  socket.on('matchmaking_timeout', function(d) {
+  socket.on('queue_cancelled', function() {
     resetMatchUI();
-    toast(d.message || 'Hết thời gian tìm trận', 'w');
+    toast('Không tìm được đối thủ. Vui lòng thử lại sau.', 'w');
   });
 
   socket.on('game_start', function(data) {
@@ -466,11 +492,24 @@ function connectSocket(token) {
     updateViewersBar(d.players, d.spectators);
   });
 
-  socket.on('rematch_vote', function(d) {
-    if (d.count < 2) {
-      toast(d.username + ' muốn chơi lại... 🔄', 'i');
-    }
-    // Khi đủ 2 vote, server sẽ emit game_start
+  socket.on('rematch_pending', function(d) {
+    if ($('rematch-from')) $('rematch-from').textContent = d.from;
+    if ($('rematch-modal')) $('rematch-modal').style.display = 'flex';
+  });
+
+  socket.on('rematch_accepted', function() {
+    if ($('rematch-modal')) $('rematch-modal').style.display = 'none';
+    if ($('result-modal')) $('result-modal').style.display = 'none';
+    toast('Bắt đầu ván mới!', 's');
+  });
+
+  socket.on('rematch_declined', function(d) {
+    if ($('rematch-modal')) $('rematch-modal').style.display = 'none';
+    if ($('result-modal')) $('result-modal').style.display = 'none';
+    if (d.reason === 'declined') toast('Đối thủ đã từ chối tái đấu.', 'w');
+    else if (d.reason === 'timeout') toast('Hết thời gian chờ tái đấu.', 'w');
+    else if (d.reason === 'opponent_left' || d.reason === 'left') toast('Đối thủ đã rời phòng.', 'w');
+    backLobby();
   });
 
   socket.on('chat_msg', function(d) {
@@ -657,11 +696,12 @@ function resetMatchUI() {
   if (fb) fb.style.display = 'block';
   if (sr) {
     sr.style.display = 'none';
-    var span = sr.querySelector('.mm-range');
-    if (span) span.textContent = '';
+    var s = sr.querySelector('.mm-status'); if (s) s.textContent = '';
+    var r = sr.querySelector('.mm-range');  if (r) r.textContent = '';
   }
   set('wt', '0');
 }
+
 
 // ─── Game ─────────────────────────────────────────────────────────────────────
 function startGame(data) {
@@ -1188,23 +1228,13 @@ function showResult(result) {
   }
 
   // Buttons — single authoritative block
-  var rab = $('result-action-btn');
-  if (rab) {
-    rab.style.display = 'none';
-    rab._action = null;
-    if (!isSpectator) {
-      if (result.gameType === 'casual') {
-        rab.textContent = rematchVoted ? '⏳ Đang chờ đối thủ...' : '🔄 Tái đấu';
-        rab.style.display = 'inline-block';
-        rab._action = rematchVoted ? null : playAgain;
-      } else if (result.gameType === 'ranked') {
-        rab.textContent = '🔍 Tìm trận mới';
-        rab.style.display = 'inline-block';
-        rab._action = function() { nav('thidau'); cancelMatch && cancelMatch(); findMatch(); };
-      }
-    }
-    // Spectator: không hiện nút gì cả
+  if ($('rematch-actions')) {
+    $('rematch-actions').style.display = isSpectator ? 'none' : 'block';
+    if ($('btn-request-rematch')) $('btn-request-rematch').style.display = 'inline-block';
+    if ($('rematch-status')) $('rematch-status').style.display = 'none';
   }
+  var rab = $('result-action-btn');
+  if (rab) rab.style.display = 'none';
 
   $('result-modal').style.display = 'flex';
 }
@@ -1218,22 +1248,19 @@ function backLobby() {
   nav('home');
 }
 
-function playAgain() {
-  var paBtn = $('result-action-btn');
-  if (gameType === 'casual' && !isSpectator) {
-    if (rematchVoted) return;
-    rematchVoted = true;
-    if (paBtn) paBtn.textContent = '⏳ Đang chờ đối thủ...';
-    if (socket && currentRoom) socket.emit('casual_rematch', { roomCode: currentRoom });
-    var rm = $('result-modal'); if (rm) rm.style.display = 'none';
-    toast('Đã gửi yêu cầu chơi lại...', 'i');
-  } else {
-    // Ranked: find new match
-    var rm = $('result-modal'); if (rm) rm.style.display = 'none';
-    currentRoom = null; isSpectator = false;
-    nav('thidau');
-    if (socket) socket.emit('join_matchmaking');
+function requestRematch() {
+  if (isSpectator) return;
+  if ($('btn-request-rematch')) $('btn-request-rematch').style.display = 'none';
+  if ($('rematch-status')) {
+    $('rematch-status').textContent = 'Đang chờ đối thủ...';
+    $('rematch-status').style.display = 'block';
   }
+  if (socket) socket.emit('rematch_request');
+}
+
+function replyRematch(accept) {
+  if (socket) socket.emit('rematch_reply', { accept: accept });
+  if ($('rematch-modal')) $('rematch-modal').style.display = 'none';
 }
 
 // ─── Leaderboard ──────────────────────────────────────────────────────────────

@@ -234,6 +234,35 @@ function calcELODraw(elo1, elo2, games1, games2) {
   };
 }
 
+function getRecentStats(userId, limit = 10) {
+  const rows = getDB().prepare(`
+    SELECT winner_id, draw, player1_id, player2_id
+    FROM games
+    WHERE game_type='ranked' AND (player1_id=? OR player2_id=?)
+    ORDER BY created_at DESC LIMIT ?
+  `).all(userId, userId, limit);
+
+  if (!rows.length) return { recentWinRate: 0.5, streak: 0 };
+
+  // Recent win rate (draws excluded from win count but included in denominator)
+  let wins = 0;
+  for (const r of rows) { if (!r.draw && r.winner_id === userId) wins++; }
+  const recentWinRate = wins / rows.length;
+
+  // Current streak (consecutive run from most recent, stops on direction change or draw)
+  let streak = 0;
+  for (const r of rows) {
+    if (r.draw) break;
+    const won = r.winner_id === userId;
+    if (streak === 0)       { streak = won ? 1 : -1; }
+    else if (won && streak > 0) { streak++; }
+    else if (!won && streak < 0) { streak--; }
+    else break;
+  }
+  return { recentWinRate, streak };
+}
+
+
 function getAnnouncement() {
   return getDB().prepare('SELECT content, updated_at FROM announcements LIMIT 1').get();
 }
@@ -246,5 +275,5 @@ module.exports = {
   updateUserStats, updateAvatarUrl,
   getLeaderboard, getUserRank, saveGame, saveGameMoves,
   calcELO, calcELODraw, getKFactor,
-  getAnnouncement, setAnnouncement
+  getAnnouncement, setAnnouncement, getRecentStats
 };

@@ -1,14 +1,14 @@
 'use strict';
 const {
   games, waitingRooms,
-  createGame, getGame, deleteGame,
+  createGame, getGame, deleteGame, resetGameForRematch,
   isForbidden, checkWinner, checkDraw,
   generateRoomCode, MOVE_TIME, BOARD_SIZE
 } = require('./game');
 const {
   findUserById, updateUserStats, saveGame, saveGameMoves,
   calcELO, calcELODraw,
-  getUserRank, getAnnouncement, setAnnouncement
+  getUserRank, getAnnouncement, setAnnouncement, getRecentStats
 } = require('./db');
 const { joinQueue, leaveQueue, startTicker, getQueueSize, getQueue } = require('./matchmaking');
 
@@ -255,15 +255,20 @@ function setupHandlers(io, socket) {
       casualScores: newCasualScores  // broadcast scores mới nhất
     });
 
-    // Keep room data for casual rematch
+    // Keep room data for rematch
+    game.status = 'finished';
+    game.winnerPiece = isDraw ? null : winnerPiece;
     if (game.gameType === 'casual') {
-      game.status = 'finished_casual';
-      game.casualScores = newCasualScores; // lưu vào game
-      game.lastPlayerX = { ...p.X };
-      game.lastPlayerO = { ...p.O };
-    } else {
-      deleteGame(roomCode);
+      game.casualScores = newCasualScores;
     }
+    
+    // Set 30s rematch timeout
+    game.rematchTimer = setTimeout(() => {
+      io.to(roomCode).emit('rematch_declined', { reason: 'timeout' });
+      deleteGame(roomCode);
+      broadcastLiveGames(io);
+    }, 30000);
+
     broadcastLiveGames(io);
   }
 
@@ -309,8 +314,9 @@ function setupHandlers(io, socket) {
     if (game && game.status === 'playing' && permanent) {
       const leftPiece = game.players.X.userId === userId ? 'X' : 'O';
       endGame(room, leftPiece === 'X' ? 'O' : 'X', 'disconnect');
-    } else if (game && game.status === 'finished_casual' && permanent) {
-      // Dọn dẹp game casual đã kết thúc khi người chơi rời
+    } else if (game && game.status === 'finished' && permanent) {
+      if (game.rematchTimer) clearTimeout(game.rematchTimer);
+      socket.to(room).emit('rematch_declined', { reason: 'left' });
       deleteGame(room);
       broadcastLiveGames(io);
     }
@@ -434,67 +440,73 @@ function setupHandlers(io, socket) {
     } catch(e) { socket.emit('room_error', { message: 'Lỗi khi quay lại trận' }); }
   });
 
-  // ── Casual rematch ─────────────────────────────────────────────────────────
-  socket.on('casual_rematch', ({ roomCode }) => {
+  // ── Rematch Flow ───────────────────────────────────────────────────────────
+  socket.on('rematch_request', () => {
     try {
+      const roomCode = socket.currentRoom;
       const game = getGame(roomCode);
-      if (!game || game.status !== 'finished_casual') return;
-      // Only players can request rematch
-      const isPlayer = game.lastPlayerX?.userId === userId || game.lastPlayerO?.userId === userId;
+      if (!game || game.status !== 'finished') return;
+      const isPlayer = game.players.X.userId === userId || game.players.O.userId === userId;
       if (!isPlayer) return;
 
-      // Track rematch votes
-      if (!game.rematchVotes) game.rematchVotes = new Set();
-      game.rematchVotes.add(userId);
-
-      // Notify room about vote
-      io.to(roomCode).emit('rematch_vote', {
-        userId, username,
-        count: game.rematchVotes.size
-      });
-
-      // Both players voted → start rematch
-      if (game.rematchVotes.size >= 2) {
-        game.rematchVotes.clear();
-        const wasX = game.lastPlayerX;
-        const wasO = game.lastPlayerO;
-        const p1Id = game.player1Id; // người trái cố định từ ván đầu
-
-        // Người đi O ván trước sẽ đi X ván này
-        const newX = wasO;
-        const newO = wasX;
-        deleteGame(roomCode);
-
-        const newGame = createGame(roomCode, newX, newO);
-        newGame.gameType = 'casual';
-        newGame.player1Id = p1Id;
-        newGame.casualScores = game.casualScores || {}; // kế thừa tỉ số
-
-        // Xác định piece của từng vị trí dựa trên player1Id cố định
-        const leftPiece  = newX.userId === p1Id ? 'X' : 'O';
-        const rightPiece = newX.userId === p1Id ? 'O' : 'X';
-        const leftUserId  = p1Id;
-        const rightUserId = (newX.userId === p1Id ? newO.userId : newX.userId);
-
-        const startData = {
-          roomCode, gameType: 'casual', isRematch: true,
-          board: newGame.board, forbidden: newGame.forbidden,
-          players: {
-            X: { userId: newX.userId, username: newX.username, elo: newX.elo, avatarUrl: newX.avatarUrl || '' },
-            O: { userId: newO.userId, username: newO.username, elo: newO.elo, avatarUrl: newO.avatarUrl || '' }
-          },
-          displayLeft:  { userId: leftUserId,  piece: leftPiece },
-          displayRight: { userId: rightUserId, piece: rightPiece },
-          currentTurn: 'X', moveCount: 0
-        };
-        // Lưu vào game để spectator vào sau nhận được
-        newGame.displayLeft  = startData.displayLeft;
-        newGame.displayRight = startData.displayRight;
-        io.to(roomCode).emit('game_start', startData);
-        startMoveTimer(roomCode);
-        broadcastLiveGames(io);
+      // Ensure the other player is still in the room
+      const room = io.sockets.adapter.rooms.get(roomCode);
+      if (!room || room.size < 2) {
+        socket.emit('rematch_declined', { reason: 'opponent_left' });
+        return;
       }
-    } catch(e) { console.error('casual_rematch:', e); }
+
+      socket.to(roomCode).emit('rematch_pending', { from: username });
+    } catch(e) { console.error('rematch_request:', e); }
+  });
+
+  socket.on('rematch_reply', ({ accept }) => {
+    try {
+      const roomCode = socket.currentRoom;
+      const game = getGame(roomCode);
+      if (!game || game.status !== 'finished') return;
+      const isPlayer = game.players.X.userId === userId || game.players.O.userId === userId;
+      if (!isPlayer) return;
+
+      if (game.rematchTimer) clearTimeout(game.rematchTimer);
+
+      if (!accept) {
+        io.to(roomCode).emit('rematch_declined', { reason: 'declined' });
+        deleteGame(roomCode);
+        broadcastLiveGames(io);
+        return;
+      }
+
+      // Accepted -> reset and start
+      const p1Id = game.player1Id; // Người trái cố định
+      const newGame = resetGameForRematch(roomCode, game.winnerPiece);
+      
+      const leftPiece  = newGame.players.X.userId === p1Id ? 'X' : 'O';
+      const rightPiece = newGame.players.X.userId === p1Id ? 'O' : 'X';
+      const leftUserId  = p1Id;
+      const rightUserId = (newGame.players.X.userId === p1Id ? newGame.players.O.userId : newGame.players.X.userId);
+
+      const startData = {
+        roomCode, gameType: newGame.gameType, isRematch: true,
+        board: newGame.board, forbidden: newGame.forbidden,
+        players: {
+          X: { userId: newGame.players.X.userId, username: newGame.players.X.username, elo: newGame.players.X.elo, avatarUrl: newGame.players.X.avatarUrl || '' },
+          O: { userId: newGame.players.O.userId, username: newGame.players.O.username, elo: newGame.players.O.elo, avatarUrl: newGame.players.O.avatarUrl || '' }
+        },
+        displayLeft:  { userId: leftUserId,  piece: leftPiece },
+        displayRight: { userId: rightUserId, piece: rightPiece },
+        currentTurn: 'X', moveCount: 0
+      };
+      
+      newGame.displayLeft  = startData.displayLeft;
+      newGame.displayRight = startData.displayRight;
+      
+      io.to(roomCode).emit('rematch_accepted');
+      io.to(roomCode).emit('game_start', startData);
+      startMoveTimer(roomCode);
+      broadcastLiveGames(io);
+
+    } catch(e) { console.error('rematch_reply:', e); }
   });
 
   // ── Matchmaking ────────────────────────────────────────────────────────────
@@ -506,15 +518,21 @@ function setupHandlers(io, socket) {
         socket.emit('toast', { msg: 'Bạn đang trong trận đấu. Hãy kết thúc trước khi tìm trận mới!', type: 'w' });
         return;
       }
-      // Bug 4 fix: finished_casual rooms must be cleaned up permanently so the
-      // other player is not left waiting for a rematch that can never come.
-      if (activeGame && activeGame.status === 'finished_casual') {
+      if (activeGame && activeGame.status === 'finished') {
         leaveCurrentRoom(true); // deletes game + leaves socket room
       }
     }
     leaveCurrentRoom(false);
     const u = freshUser();
-    const joined = joinQueue({ socketId: socket.id, userId, username, elo: u.elo, avatarUrl: u.avatar_url || '' });
+    const stats = getRecentStats(userId, 10); // DB call once — never inside tick
+    const joined = joinQueue({
+      socketId: socket.id,
+      userId, username,
+      elo: u.elo,
+      avatarUrl: u.avatar_url || '',
+      streak: stats.streak,
+      recentWinRate: stats.recentWinRate
+    });
     if (joined) socket.emit('matchmaking_status', { status: 'searching' });
     broadcastQueue(io); // broadcast ngay khi join
   });
@@ -663,6 +681,11 @@ function setupHandlers(io, socket) {
       }, DISCONNECT_GRACE);
       disconnectTimers.set(key, timer);
       io.to(room).emit('player_disconnected', { username, gracePeriod: DISCONNECT_GRACE / 1000 });
+    } else if (game && game.status === 'finished') {
+      if (game.rematchTimer) clearTimeout(game.rematchTimer);
+      io.to(room).emit('rematch_declined', { reason: 'left' });
+      deleteGame(room);
+      broadcastLiveGames(io);
     } else {
       if (waitingRooms.has(room)) { waitingRooms.delete(room); broadcastRooms(io); }
     }
